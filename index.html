@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MarkBook – GPA Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial;
+      margin: 0;
+      padding: 0;
+      background-color: #eef3f7;
+    }
+
+    .welcome-page {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #eef3f7;
+      padding: 20px;
+    }
+
+    .welcome-box {
+      background-color: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .main-content {
+      display: none;
+      flex-direction: column;
+      padding: 20px;
+      position: relative;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .box {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+
+    input {
+      padding: 8px;
+      margin: 5px 0;
+      width: calc(100% - 12px);
+      max-width: 100%;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .btn-red { background-color: crimson; }
+    .btn-blue { background-color: dodgerblue; }
+    .btn-grey { background-color: #555; }
+
+    /* SUBJECT INPUT FLEX STYLE */
+    .subject-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .subject-input, .mark-input {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .subject-input label,
+    .mark-input label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    /* HISTORY STYLE */
+    .history-item {
+      position: relative;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 0 6px #ccc;
+    }
+
+    .history-item .menu {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: black;
+    }
+
+    .history-item .dropdown {
+      position: absolute;
+      top: 36px;
+      right: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      z-index: 10;
+      width: 130px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      display: none;
+    }
+
+    .history-item .dropdown button {
+      background-color: white;
+      color: black;
+      border: none;
+      width: 100%;
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .history-item .dropdown .btn-red {
+      background-color: crimson;
+      color: white;
+    }
+
+    .history-item .dropdown button:hover {
+      background-color: #f0f0f0;
+    }
+
+    .dropdown input {
+      width: 100%;
+    }
+
+    .dropdown button {
+      width: 100%;
+      margin-top: 5px;
+      padding: 8px;
+    }
+
+    @media (min-width: 768px) {
+      .main-content {
+        padding: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WELCOME SCREEN -->
+  <div class="welcome-page" id="welcomePage">
+    <div class="welcome-box">
+      <h1>📘 Welcome to MarkBook</h1>
+      <p>Your GPA & Result History Tracker</p>
+      <input type="text" id="studentName" placeholder="Enter Name / Roll No" />
+      <br><br>
+      <button onclick="startApp()">Start GPA Calculation</button>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div class="main-content" id="mainContent">
+
+    <!-- Top Bar with History Menu -->
+    <div class="top-bar">
+      <h2>🎓 GPA Calculator for <span id="displayName"></span></h2>
+      <button class="menu" onclick="toggleGlobalHistoryMenu()">⋮</button>
+    </div>
+
+    <!-- History Dropdown -->
+    <div class="dropdown" id="globalHistoryMenu">
+      <h4>📜 History</h4>
+      <input type="text" id="searchDate" placeholder="Search by name or date..." oninput="filterByDate()" />
+      <button class="btn-red" onclick="clearAllHistory()">🗑️ Delete All History</button>
+      <div id="historyContainer" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="box">
+      <label>Enter number of semesters:</label>
+      <input type="number" id="semCount" min="1" max="12" />
+      <button onclick="createSemesters()">Next</button>
+    </div>
+
+    <div id="semestersContainer"></div>
+
+    <div class="box" id="overallContainer" style="display:none;">
+      <button onclick="calculateOverallGPA()">Calculate Overall GPA</button>
+      <div id="finalResult"></div>
+      <br>
+      <button onclick="goToHome()" class="btn-blue">🏠 Go to Home Page</button>
+    </div>
+  </div>
+
+  <script>
+    let studentName = '';
+    const semGPA = {};
+
+    function startApp() {
+      const input = document.getElementById("studentName").value.trim();
+      if (input === "") {
+        alert("Please enter a name or roll number.");
+        return;
+      }
+      studentName = input;
+      document.getElementById("displayName").innerText = studentName;
+      document.getElementById("welcomePage").style.display = "none";
+      document.getElementById("mainContent").style.display = "flex";
+    }
+
+    function createSemesters() {
+      const count = parseInt(document.getElementById('semCount').value);
+      const container = document.getElementById('semestersContainer');
+      container.innerHTML = '';
+
+      for (let i = 1; i <= count; i++) {
+        const box = document.createElement('div');
+        box.className = 'box';
+        box.id = `sem${i}`;
+        box.innerHTML = `
+          <h3>Semester ${i}</h3>
+          <label>How many subjects?</label>
+          <input type="number" min="1" onchange="createSubjects(${i}, this.value)" />
+          <div id="subjects${i}"></div>
+          <button onclick="calculateSemesterGPA(${i})">Calculate Semester ${i} GPA</button>
+          <div id="result${i}"></div>
+        `;
+        container.appendChild(box);
+      }
+
+      document.getElementById('overallContainer').style.display = 'block';
+    }
+
+    function createSubjects(semId, count) {
+      const container = document.getElementById(`subjects${semId}`);
+      container.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const row = document.createElement('div');
+        row.className = 'subject-row';
+        row.innerHTML = `
+          <div class="subject-input">
+            <label>Subject ${i} Name</label>
+            <input type="text" />
+          </div>
+          <div class="mark-input">
+            <label>Mark</label>
+            <input type="number" min="0" max="100" class="mark" onkeydown="focusNext(event, this)" />
+          </div>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    function focusNext(event, currentInput) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const inputs = Array.from(document.querySelectorAll('.mark'));
+        const index = inputs.indexOf(currentInput);
+        if (index !== -1 && index + 1 < inputs.length) {
+          inputs[index + 1].focus();
+        }
+      }
+    }
+
+    function calculateSemesterGPA(semId) {
+      const subjectBox = document.querySelectorAll(`#sem${semId} .mark`);
+      let total = 0;
+      let valid = true;
+      subjectBox.forEach(input => {
+        const mark = parseFloat(input.value);
+        if (isNaN(mark) || mark < 0 || mark > 100) {
+          valid = false;
+        } else {
+          total += mark;
+        }
+      });
+      if (!valid) {
+        alert("Please enter valid marks between 0 and 100.");
+        return;
+      }
+      const subjectCount = subjectBox.length;
+      const avg = (subjectCount > 0) ? (total / subjectCount) : 0;
+      semGPA[semId] = avg.toFixed(2);
+      document.getElementById(`result${semId}`).innerHTML = `<b>Semester GPA:</b> ${avg.toFixed(2)}<br><b>Percentage:</b> ${avg.toFixed(2)}%`;
+    }
+
+    function calculateOverallGPA() {
+      const gpas = Object.values(semGPA).map(g => parseFloat(g));
+      if (gpas.length === 0) return;
+      const total = gpas.reduce((a, b) => a + b, 0);
+      const avg = total / gpas.length;
+      const pass = gpas.every(g => g >= 40);
+      const result = {
+        name: studentName,
+        date: new Date().toLocaleString(),
+        totalGPA: total.toFixed(2),
+        averageGPA: avg.toFixed(2),
+        status: pass ? "✅ Pass" : "❌ Fail"
+      };
+      saveToHistory(result);
+      document.getElementById('finalResult').innerHTML = `<hr><h3>📊 Final Result</h3><p><b>Total GPA:</b> ${result.totalGPA}</p><p><b>Average GPA:</b> ${result.averageGPA}</p><p><b>Status:</b> ${result.status}</p>`;
+    }
+
+    function saveToHistory(result) {
+      let history = JSON.parse(localStorage.getItem("gpaHistory")) || [];
+      history.push(result);
+      localStorage.setItem("gpaHistory", JSON.stringify(history));
+      loadHistory();
+    }
+
+    function loadHistory() {
+      const container = document.getElementById("historyContainer");
+      container.innerHTML = "";
+      const history = JSON.parse(localStorage.getItem("gpaHistory")) || [];
+      history.reverse().forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerHTML = `
+          <b>${item.name}</b><br>${item.date}
+          <button class="menu" onclick="toggleDropdown(${index})">⋮</button>
+          <div class="dropdown" id="dropdown${index}">
+            <button onclick="viewHistory(${index})">👁 View</button>
+            <button class="btn-red" onclick="deleteHistory(${index})">🗑 Delete</button>
+          </div>
+          <div id="view${index}" style="margin-top: 10px;"></div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleDropdown(index) {
+      const dropdown = document.getElementById(`dropdown${index}`);
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleGlobalHistoryMenu() {
+      const menu = document.getElementById("globalHistoryMenu");
+      menu.style.display = menu.style.display === "block" ? "none" : "block";
+      loadHistory();
+    }
+
+    function viewHistory(index) {
+      const history = JSON.parse(localStorage.getItem("gpaHistory")) || [];
+      const viewDiv = document.getElementById(`view${index}`);
+      const item = history[history.length - 1 - index];
+      if (viewDiv.innerHTML.trim() !== '') {
+        viewDiv.innerHTML = '';
+      } else {
+        viewDiv.innerHTML = `
+          <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
+            <p><b>Total GPA:</b> ${item.totalGPA}</p>
+            <p><b>Average GPA:</b> ${item.averageGPA}</p>
+            <p><b>Status:</b> ${item.status}</p>
+          </div>
+        `;
+      }
+      toggleDropdown(index);
+    }
+
+    function deleteHistory(index) {
+      if (!confirm("Are you sure you want to delete this record?")) return;
+      let history = JSON.parse(localStorage.getItem("gpaHistory")) || [];
+      history.splice(history.length - 1 - index, 1);
+      localStorage.setItem("gpaHistory", JSON.stringify(history));
+      loadHistory();
+    }
+
+    function clearAllHistory() {
+      if (confirm("Delete all history? This cannot be undone.")) {
+        localStorage.removeItem("gpaHistory");
+        loadHistory();
+      }
+    }
+
+    function filterByDate() {
+      const search = document.getElementById("searchDate").value.toLowerCase();
+      const container = document.getElementById("historyContainer");
+      container.innerHTML = "";
+      const history = JSON.parse(localStorage.getItem("gpaHistory")) || [];
+      history.reverse().forEach((item, index) => {
+        if (
+          item.name.toLowerCase().includes(search) ||
+          item.date.toLowerCase().includes(search)
+        ) {
+          const div = document.createElement("div");
+          div.className = "history-item";
+          div.innerHTML = `
+            <b>${item.name}</b><br>${item.date}
+            <button class="menu" onclick="toggleDropdown(${index})">⋮</button>
+            <div class="dropdown" id="dropdown${index}">
+              <button onclick="viewHistory(${index})">👁 View</button>
+              <button class="btn-red" onclick="deleteHistory(${index})">🗑 Delete</button>
+            </div>
+            <div id="view${index}" style="margin-top: 10px;"></div>
+          `;
+          container.appendChild(div);
+        }
+      });
+    }
+
+    function goToHome() {
+      document.getElementById("mainContent").style.display = "none";
+      document.getElementById("welcomePage").style.display = "flex";
+      document.getElementById("studentName").value = "";
+      document.getElementById("displayName").innerText = "";
+      document.getElementById("semestersContainer").innerHTML = "";
+      document.getElementById("overallContainer").style.display = "none";
+      document.getElementById("finalResult").innerHTML = "";
+      Object.keys(semGPA).forEach(key => delete semGPA[key]);
+    }
+
+    // Close ⋮ history menu if clicked outside
+    document.addEventListener("click", function (e) {
+      const menuBtn = document.querySelector(".menu");
+      const dropdown = document.getElementById("globalHistoryMenu");
+      if (!dropdown.contains(e.target) && e.target !== menuBtn) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    window.onload = loadHistory;
+  </script>
+
+</body>
+</html>
